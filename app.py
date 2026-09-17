@@ -13,7 +13,222 @@ from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 from groq import Groq
 
-st.set_page_config(page_title="AI Document Assistant", page_icon="📄", layout="wide")
+st.set_page_config(page_title="AI Document Assistant", page_icon="🔷", layout="wide")
+
+CUSTOM_CSS = """
+<style>
+:root{
+    --bg-app:#060b16;
+    --bg-panel:#0d1b2e;
+    --bg-panel-alt:#122544;
+    --border:#1e3a5f;
+    --border-soft:#16283f;
+    --accent:#2f6fed;
+    --accent-bright:#4c8dff;
+    --accent-soft:rgba(47,111,237,0.14);
+    --text-main:#e7edf7;
+    --text-dim:#8fa3c4;
+    --text-faint:#5f7594;
+    --radius:14px;
+}
+
+.stApp{
+    background:
+        radial-gradient(circle at 15% 0%, #0e1f3a 0%, transparent 45%),
+        radial-gradient(circle at 85% 10%, #0a1830 0%, transparent 40%),
+        var(--bg-app);
+    color:var(--text-main);
+}
+
+section[data-testid="stSidebar"]{
+    background:linear-gradient(180deg,#0a1628 0%, #081120 100%);
+    border-right:1px solid var(--border-soft);
+}
+section[data-testid="stSidebar"] .block-container{ padding-top:1.6rem; }
+
+h1,h2,h3,h4,h5{ color:var(--text-main) !important; letter-spacing:-0.01em; }
+p, li, span, label, .stMarkdown{ color:var(--text-dim); }
+
+/* ---------- Hero header ---------- */
+.hero{
+    background:linear-gradient(135deg, var(--bg-panel-alt) 0%, var(--bg-panel) 100%);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:28px 32px;
+    margin-bottom:22px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.35);
+}
+.hero h1{ font-size:1.9rem; margin:0 0 6px 0; }
+.hero p{ margin:0; color:var(--text-dim); font-size:0.98rem; }
+.hero .badge-row{ margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ---------- Generic pill / badge ---------- */
+.pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--accent-soft);
+    border:1px solid rgba(76,141,255,0.35);
+    color:#bcd4ff;
+    padding:4px 12px;
+    border-radius:999px;
+    font-size:0.78rem;
+    font-weight:500;
+}
+.pill.muted{
+    background:rgba(255,255,255,0.04);
+    border-color:var(--border);
+    color:var(--text-dim);
+}
+.pill.score{
+    background:rgba(47,111,237,0.10);
+    border-color:var(--border);
+    color:#a9c2ec;
+    font-variant-numeric:tabular-nums;
+}
+
+/* ---------- Sidebar section title ---------- */
+.sidebar-title{
+    color:var(--text-main);
+    font-weight:600;
+    font-size:0.95rem;
+    margin:4px 0 10px 0;
+    display:flex; align-items:center; gap:8px;
+}
+
+/* ---------- File uploader dropzone ---------- */
+[data-testid="stFileUploaderDropzone"]{
+    background:var(--bg-panel) !important;
+    border:1.5px dashed var(--border) !important;
+    border-radius:12px !important;
+}
+[data-testid="stFileUploaderDropzone"]:hover{
+    border-color:var(--accent-bright) !important;
+}
+[data-testid="stFileUploaderDropzone"] *{ color:var(--text-dim) !important; }
+
+/* ---------- Text inputs ---------- */
+.stTextInput input, .stTextArea textarea{
+    background:var(--bg-panel) !important;
+    border:1px solid var(--border) !important;
+    color:var(--text-main) !important;
+    border-radius:10px !important;
+}
+.stTextInput input:focus, .stTextArea textarea:focus{
+    border-color:var(--accent-bright) !important;
+    box-shadow:0 0 0 1px var(--accent-bright) !important;
+}
+.stTextInput input::placeholder{ color:var(--text-faint) !important; }
+
+/* ---------- Buttons ---------- */
+.stButton>button{
+    background:linear-gradient(135deg, var(--accent) 0%, #1d4fc4 100%) !important;
+    color:#ffffff !important;
+    border:1px solid rgba(255,255,255,0.08) !important;
+    border-radius:10px !important;
+    font-weight:600 !important;
+    padding:0.55rem 1.1rem !important;
+    box-shadow:0 4px 14px rgba(47,111,237,0.25);
+    transition:filter 0.15s ease, transform 0.05s ease;
+}
+.stButton>button:hover{ filter:brightness(1.12); }
+.stButton>button:active{ transform:translateY(1px); }
+.stButton>button[kind="secondary"]{
+    background:var(--bg-panel-alt) !important;
+    box-shadow:none;
+    border:1px solid var(--border) !important;
+}
+
+/* ---------- Cards (st.container(border=True)) ---------- */
+div[data-testid="stVerticalBlockBorderWrapper"]{
+    background:var(--bg-panel);
+    border:1px solid var(--border) !important;
+    border-radius:var(--radius) !important;
+}
+
+/* ---------- Metrics ---------- */
+[data-testid="stMetric"]{
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 16px;
+}
+[data-testid="stMetricValue"]{ color:var(--accent-bright) !important; }
+[data-testid="stMetricLabel"]{ color:var(--text-dim) !important; }
+
+/* ---------- Expander ---------- */
+[data-testid="stExpander"]{
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border) !important;
+    border-radius:12px !important;
+    overflow:hidden;
+}
+[data-testid="stExpander"] summary{ color:var(--text-main) !important; }
+
+/* ---------- Chat messages ---------- */
+[data-testid="stChatMessage"]{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:4px 6px;
+    margin-bottom:10px;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]){
+    background:linear-gradient(135deg,#132a4d 0%, #0d1b2e 100%);
+    border-color:rgba(76,141,255,0.30);
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]){
+    background:var(--bg-panel);
+    border-left:3px solid var(--accent-bright);
+}
+
+/* ---------- Divider ---------- */
+hr{ border-color:var(--border-soft) !important; }
+
+/* ---------- Alerts ---------- */
+[data-testid="stAlert"]{
+    border-radius:12px;
+    border:1px solid var(--border);
+}
+
+/* ---------- File chip list ---------- */
+.file-chip{
+    display:flex; align-items:center; gap:8px;
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:8px 12px;
+    margin-bottom:6px;
+    font-size:0.88rem;
+    color:var(--text-main);
+}
+.file-chip .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--accent-bright);
+    box-shadow:0 0 6px var(--accent-bright);
+    flex-shrink:0;
+}
+
+/* ---------- Source card ---------- */
+.source-card{
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:10px;
+}
+.source-card .source-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px; flex-wrap:wrap; gap:6px;
+}
+.source-card .source-name{ color:var(--text-main); font-weight:600; font-size:0.86rem; }
+.source-card .source-text{
+    color:var(--text-dim); font-size:0.85rem; line-height:1.5;
+    max-height:120px; overflow-y:auto;
+}
+
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]{ background:#0a1628 !important; }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 SUPPORTED_TYPES = ["pdf", "docx", "txt", "md"]
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -32,6 +247,8 @@ if "index" not in st.session_state:
     st.session_state.index = None
 if "documents_key" not in st.session_state:
     st.session_state.documents_key = None
+if "qa_history" not in st.session_state:
+    st.session_state.qa_history = []
 
 
 # -----------------------------
@@ -444,138 +661,179 @@ def process_documents(files):
 # -----------------------------
 # UI
 # -----------------------------
-st.title("📄 AI Document Assistant")
-st.write(
-    "Upload documents or load a public Google Drive file, then ask questions "
-    "using semantic + keyword search."
+st.markdown(
+    """
+    <div class="hero">
+        <h1>🔷 AI Document Assistant</h1>
+        <p>Upload documents or load a public Google Drive file, then ask questions
+        using hybrid semantic + keyword retrieval, answered strictly from your sources.</p>
+        <div class="badge-row">
+            <span class="pill">Semantic Search</span>
+            <span class="pill">Keyword Search</span>
+            <span class="pill">Hybrid Ranking</span>
+            <span class="pill muted">Groq-Powered</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
-st.sidebar.header("Document Sources")
+with st.sidebar:
+    st.markdown('<div class="sidebar-title">📂 Document Sources</div>', unsafe_allow_html=True)
 
-uploaded_files = st.sidebar.file_uploader(
-    "Upload PDF, DOCX, TXT or MD files",
-    type=SUPPORTED_TYPES,
-    accept_multiple_files=True
-)
+    uploaded_files = st.file_uploader(
+        "Upload PDF, DOCX, TXT or MD files",
+        type=SUPPORTED_TYPES,
+        accept_multiple_files=True
+    )
 
-drive_link = st.sidebar.text_input(
-    "Google Drive file link",
-    placeholder="Paste a public Drive file link"
-)
+    st.markdown('<div class="sidebar-title">🔗 Google Drive</div>', unsafe_allow_html=True)
 
-process_button = st.sidebar.button("Process Documents", type="primary")
+    drive_link = st.text_input(
+        "Google Drive file link",
+        placeholder="Paste a public Drive file link",
+        label_visibility="collapsed",
+    )
 
-if process_button:
-    files_to_process = []
+    st.write("")
+    process_button = st.button("⚙️  Process Documents", type="primary", use_container_width=True)
 
-    for uploaded in uploaded_files or []:
-        files_to_process.append({
-            "filename": uploaded.name,
-            "bytes": uploaded.getvalue()
-        })
+    if process_button:
+        files_to_process = []
 
-    if drive_link.strip():
-        try:
-            drive_bytes, drive_filename = load_drive_file(drive_link.strip())
+        for uploaded in uploaded_files or []:
             files_to_process.append({
-                "filename": drive_filename,
-                "bytes": drive_bytes
+                "filename": uploaded.name,
+                "bytes": uploaded.getvalue()
             })
-        except Exception as error:
-            st.error(f"Google Drive error: {error}")
 
-    if files_to_process:
-        try:
-            with st.spinner("Extracting text, creating chunks and embeddings..."):
-                extracted, chunks = process_documents(files_to_process)
+        if drive_link.strip():
+            try:
+                drive_bytes, drive_filename = load_drive_file(drive_link.strip())
+                files_to_process.append({
+                    "filename": drive_filename,
+                    "bytes": drive_bytes
+                })
+            except Exception as error:
+                st.error(f"Google Drive error: {error}")
 
-            st.session_state.documents_key = tuple(
-                item["filename"] for item in files_to_process
-            )
+        if files_to_process:
+            try:
+                with st.spinner("Extracting text, creating chunks and embeddings..."):
+                    extracted, chunks = process_documents(files_to_process)
 
-            st.success(
-                f"Processed {len(files_to_process)} document(s) and created "
-                f"{len(chunks)} chunks."
-            )
-        except Exception as error:
-            st.error(f"Processing error: {error}")
-    else:
-        st.warning("Please upload a document or provide a Google Drive file link.")
+                st.session_state.documents_key = tuple(
+                    item["filename"] for item in files_to_process
+                )
+
+                st.success(
+                    f"Processed {len(files_to_process)} document(s) and created "
+                    f"{len(chunks)} chunks."
+                )
+            except Exception as error:
+                st.error(f"Processing error: {error}")
+        else:
+            st.warning("Please upload a document or provide a Google Drive file link.")
+
+    if st.session_state.qa_history:
+        st.write("")
+        if st.button("🗑️  Clear conversation", type="secondary", use_container_width=True):
+            st.session_state.qa_history = []
+            st.rerun()
 
 
 if st.session_state.chunks:
-    st.subheader("Document Information")
+    with st.container(border=True):
+        st.markdown("#### 📊 Document Information")
 
-    filenames = sorted({
-        chunk["filename"] for chunk in st.session_state.chunks
-    })
+        filenames = sorted({
+            chunk["filename"] for chunk in st.session_state.chunks
+        })
 
-    col1, col2 = st.columns(2)
-    col1.metric("Documents", len(filenames))
-    col2.metric("Chunks", len(st.session_state.chunks))
+        col1, col2 = st.columns(2)
+        col1.metric("Documents", len(filenames))
+        col2.metric("Chunks", len(st.session_state.chunks))
 
-    st.write("**Loaded files:**")
-    for filename in filenames:
-        st.write(f"• {filename}")
-
-    with st.expander("View extracted document chunks"):
-        for i, chunk in enumerate(st.session_state.chunks, start=1):
-            page = (
-                f"Page {chunk['page']}"
-                if chunk["page"]
-                else "Page not available"
-            )
-
+        st.write("")
+        st.markdown("**Loaded files**")
+        for filename in filenames:
             st.markdown(
-                f"**Chunk {i} — {chunk['filename']} — {page}**"
+                f'<div class="file-chip"><span class="dot"></span>{filename}</div>',
+                unsafe_allow_html=True,
             )
-            st.write(chunk["text"])
 
-
-st.divider()
-
-st.subheader("Ask a Question")
-
-question = st.text_input(
-    "What would you like to know?",
-    placeholder="Ask something about your documents..."
-)
-
-if st.button("Ask", type="primary"):
-    if not st.session_state.chunks:
-        st.warning("Please process at least one document first.")
-    elif not question.strip():
-        st.warning("Please enter a question.")
-    else:
-        with st.spinner("Searching documents and generating an answer..."):
-            results = hybrid_search(question)
-            answer = answer_question(question, results)
-
-        st.markdown("### Answer")
-        st.write(answer)
-
-        st.markdown("### Retrieved Sources")
-
-        if not results:
-            st.info("No relevant sources were found.")
-        else:
-            for i, result in enumerate(results, start=1):
-                chunk = result["chunk"]
+        with st.expander("View extracted document chunks"):
+            for i, chunk in enumerate(st.session_state.chunks, start=1):
                 page = (
                     f"Page {chunk['page']}"
                     if chunk["page"]
                     else "Page not available"
                 )
 
-                with st.expander(
-                    f"Source {i}: {chunk['filename']} — {page}"
-                ):
-                    st.write(
-                        f"**Hybrid score:** {result['score']:.3f}  \n"
-                        f"**Semantic score:** {result['semantic_score']:.3f}  \n"
-                        f"**Keyword score:** {result['keyword_score']:.3f}"
+                st.markdown(
+                    f"**Chunk {i} — {chunk['filename']} — {page}**"
+                )
+                st.write(chunk["text"])
+
+    st.write("")
+
+
+st.markdown("#### 💬 Ask a Question")
+
+for turn in st.session_state.qa_history:
+    with st.chat_message("user", avatar="🧑‍💻"):
+        st.write(turn["question"])
+
+    with st.chat_message("assistant", avatar="🔷"):
+        st.write(turn["answer"])
+
+        results = turn["results"]
+        if results:
+            with st.expander(f"📎 {len(results)} retrieved source(s)"):
+                for i, result in enumerate(results, start=1):
+                    chunk = result["chunk"]
+                    page = (
+                        f"Page {chunk['page']}"
+                        if chunk["page"]
+                        else "Page not available"
                     )
-                    st.write(chunk["text"])
-else:
+
+                    st.markdown(
+                        f"""
+                        <div class="source-card">
+                            <div class="source-head">
+                                <span class="source-name">Source {i} · {chunk['filename']} — {page}</span>
+                            </div>
+                            <div>
+                                <span class="pill score">Hybrid {result['score']:.3f}</span>
+                                <span class="pill score">Semantic {result['semantic_score']:.3f}</span>
+                                <span class="pill score">Keyword {result['keyword_score']:.3f}</span>
+                            </div>
+                            <br/>
+                            <div class="source-text">{chunk['text']}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+question = st.chat_input("Ask something about your documents...")
+
+if question:
     if not st.session_state.chunks:
-        st.info("Upload a document or add a Google Drive file, then click Process Documents.")
+        st.warning("Please process at least one document first.")
+    else:
+        with st.spinner("Searching documents and generating an answer..."):
+            results = hybrid_search(question)
+            answer = answer_question(question, results)
+
+        st.session_state.qa_history.append({
+            "question": question,
+            "answer": answer,
+            "results": results,
+        })
+        st.rerun()
+
+if not st.session_state.chunks:
+    st.info("Upload a document or add a Google Drive file, then click Process Documents.")
+elif not st.session_state.qa_history:
+    st.info("Ask your first question using the box below.")
