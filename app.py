@@ -317,6 +317,9 @@ def extract_drive_id(url):
     patterns = [
         r"/file/d/([a-zA-Z0-9_-]+)",
         r"/folders/([a-zA-Z0-9_-]+)",
+        r"/document/d/([a-zA-Z0-9_-]+)",
+        r"/spreadsheets/d/([a-zA-Z0-9_-]+)",
+        r"/presentation/d/([a-zA-Z0-9_-]+)",
         r"[?&]id=([a-zA-Z0-9_-]+)"
     ]
 
@@ -325,6 +328,21 @@ def extract_drive_id(url):
         if match:
             return match.group(1)
 
+    return None
+
+
+def is_native_google_doc(url):
+    """
+    True for Google Docs/Sheets/Slides links, which are not binary files
+    in Drive and cannot be downloaded via the uc?export=download endpoint.
+    They must be exported instead.
+    """
+    if "/document/d/" in url:
+        return "docx"
+    if "/spreadsheets/d/" in url:
+        return "xlsx"
+    if "/presentation/d/" in url:
+        return "pptx"
     return None
 
 
@@ -355,6 +373,22 @@ def load_drive_file(url):
             "Folder links require Google Drive API authentication. "
             "Use a public file link here, or extend the app with OAuth/service-account access."
         )
+
+    native_format = is_native_google_doc(url)
+
+    if native_format:
+        # Google Docs/Sheets/Slides are not binary files in Drive, so they
+        # must be exported to a real file format instead of downloaded
+        # with uc?export=download.
+        filename = f"drive_file_{file_id}.{native_format}"
+
+        response = requests.get(
+            f"https://docs.google.com/{'document' if native_format == 'docx' else 'spreadsheets' if native_format == 'xlsx' else 'presentation'}/d/{file_id}/export?format={native_format}",
+            timeout=30
+        )
+        response.raise_for_status()
+
+        return response.content, filename
 
     filename = f"drive_file_{file_id}"
 
